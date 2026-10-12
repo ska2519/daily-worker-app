@@ -1,0 +1,16 @@
+{
+  "name": "daily-worker-app",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {}
+  }
+}

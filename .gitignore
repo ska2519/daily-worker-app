@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.pnpm-debug.log
+
+# Build & Output
+.next/
+dist/
+build/
+.turbo/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/

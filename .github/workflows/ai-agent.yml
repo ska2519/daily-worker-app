@@ -1,0 +1,54 @@
+name: Autonomous AI Developer Agent
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  agent-task:
+    if: github.event.label.name == 'ai-task'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run AI Agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          npx @anthropic-ai/claude-code --non-interactive \
+            --prompt "이슈 내용: $ISSUE_BODY. CLAUDE.md 규칙을 준수하여 모노레포 코드를 수정하고, pnpm typecheck를 실행하여 오류가 없도록 해줘."
+
+      # ✨ AI가 코드를 고친 뒤 모노레포 타입 정합성을 검증하는 단계 추가
+      - name: Run Typecheck & Validation
+        run: pnpm typecheck
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "feat(agent): resolved issue #${{ github.event.issue.number }}"
+          title: "[AI-Dev] ${{ github.event.issue.title }}"
+          body: "AI 에이전트가 이슈 #${{ github.event.issue.number }}를 수정하고 모노레포 타입 검증을 통과했습니다."
+          branch: "ai-fix-${{ github.event.issue.number }}"
+          labels: "automerge"
