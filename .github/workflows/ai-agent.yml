@@ -51,10 +51,11 @@ jobs:
 
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
-
+        
       - name: Run AI Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PROMPT_CONTEXT: ${{ github.event.issue.body || github.event.comment.body || '퇴근 후 자율 개발 대기 중인 이슈를 처리해줘.' }}
         run: |
           echo "=== AI 자율 에이전트 구동 시작 ==="
