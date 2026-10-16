@@ -72,7 +72,7 @@ jobs:
 
             const req = https.request({
               hostname: "generativelanguage.googleapis.com",
-              path: "/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
+              path: "/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey,
               method: "POST",
               headers: { "Content-Type": "application/json" }
             }, (res) => {
@@ -81,11 +81,16 @@ jobs:
               res.on("end", () => {
                 try {
                   const response = JSON.parse(body);
+                  if (response.error) {
+                    console.error("\n[Gemini API 에러 발생]:", response.error.message);
+                    process.exit(1);
+                  }
                   const resultText = response.candidates?.[0]?.content?.parts?.[0]?.text;
                   console.log("\n[Gemini AI 분석 결과]");
                   console.log(resultText || body);
                 } catch (e) {
-                  console.log("응답 파싱 완료:", body);
+                  console.error("응답 파싱 실패:", body);
+                  process.exit(1);
                 }
               });
             });
