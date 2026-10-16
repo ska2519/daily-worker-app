@@ -1,12 +1,33 @@
 name: Autonomous AI Developer Agent
 
 on:
+  # 1. 낮/퇴근 직전: 이슈에 'agent-ready' 라벨이 붙었을 때 자동 실행
   issues:
     types: [labeled]
 
+  # 2. 소통: 이슈나 PR 코멘트에 '@agent'가 멘션되었을 때 (봇 제외 안전장치 포함)
+  issue_comment:
+    types: [created]
+
+  # 3. 퇴근 후 자동 실행: 매일 한국 시간 저녁 6시 (UTC 기준 오전 9시)
+  schedule:
+    - cron: '0 9 * * *'
+
+  # 4. 수동 실행 (GitHub Actions 탭에서 [Run workflow] 버튼으로 즉시 테스트 가능)
+  workflow_dispatch:
+
 jobs:
   agent-task:
-    if: github.event.label.name == 'ai-task'
+    # 실행 조건 필터링:
+    # A) 'agent-ready' 라벨이 붙었을 때
+    # B) 코멘트에 '@agent'가 포함되어 있고 작성자가 봇이 아닐 때
+    # C) 저녁 스케줄러(schedule)나 수동 실행(workflow_dispatch)일 때
+    if: >
+      (github.event_name == 'issues' && github.event.label.name == 'agent-ready') ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@agent' ) && github.actor != 'dependabot[bot]' && github.actor != github.event.repository.owner.login == false) ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -34,21 +55,27 @@ jobs:
       - name: Run AI Agent
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
+          PROMPT_CONTEXT: ${{ github.event.issue.body || github.event.comment.body || '퇴근 후 자율 개발 대기 중인 이슈를 처리해줘.' }}
         run: |
+          echo "=== AI 자율 에이전트 구동 시작 ==="
           npx @anthropic-ai/claude-code --non-interactive \
-            --prompt "이슈 내용: $ISSUE_BODY. CLAUDE.md 규칙을 준수하여 모노레포 코드를 수정하고, pnpm typecheck를 실행하여 오류가 없도록 해줘."
+            --prompt "요청 사항: $PROMPT_CONTEXT. CLAUDE.md 규칙을 엄격히 준수하여 모노레포 코드를 수정해줘."
 
-      # ✨ AI가 코드를 고친 뒤 모노레포 타입 정합성을 검증하는 단계 추가
-      - name: Run Typecheck & Validation
-        run: pnpm typecheck
+      - name: Verify Monorepo Build, Typecheck and Design Lint (CLAUDE.md Rules)
+        run: |
+          echo "=== CLAUDE.md 필수 검증 단계 실행 ==="
+          pnpm turbo run build
+          pnpm typecheck
+          pnpm lint:design
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "feat(agent): resolved issue #${{ github.event.issue.number }}"
-          title: "[AI-Dev] ${{ github.event.issue.title }}"
-          body: "AI 에이전트가 이슈 #${{ github.event.issue.number }}를 수정하고 모노레포 타입 검증을 통과했습니다."
-          branch: "ai-fix-${{ github.event.issue.number }}"
+          commit-message: "feat(agent): autonomous update for issue #${{ github.event.issue.number || 'evening-task' }}"
+          title: "[AI-Dev Agent] 자동 생성된 작업 PR"
+          body: |
+            AI 에이전트가 `CLAUDE.md` 규칙과 빌드/타입/디자인 린트 검증을 모두 거쳐 생성한 PR입니다.
+            변경 내역을 검토하고 머지해 주세요!
+          branch: "ai-fix-agent-${{ github.event.issue.number || 'evening-task' }}"
           labels: "automerge"
