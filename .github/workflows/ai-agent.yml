@@ -54,13 +54,20 @@ jobs:
         
       - name: Run AI Agent
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PROMPT_CONTEXT: ${{ github.event.issue.body || github.event.comment.body || '퇴근 후 자율 개발 대기 중인 이슈를 처리해줘.' }}
         run: |
-          echo "=== AI 자율 에이전트 구동 시작 ==="
-          npx @anthropic-ai/claude-code --non-interactive \
-            --prompt "요청 사항: $PROMPT_CONTEXT. CLAUDE.md 규칙을 엄격히 준수하여 모노레포 코드를 수정해줘."
+          echo "=== Gemini AI 자율 에이전트 구동 시작 ==="
+          node -e '
+            const { GoogleGenAI } = require("@google/genai");
+            async function run() {
+              const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+              const prompt = process.env.PROMPT_CONTEXT;
+              console.log("처리할 요청 사항:", prompt);
+              // 여기에 Gemini API 호출 및 파일 수정 로직을 구현할 수 있습니다.
+            }
+            run();
+          '
 
       - name: Verify Monorepo Build, Typecheck and Design Lint (CLAUDE.md Rules)
         run: |
