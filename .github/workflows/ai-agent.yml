@@ -49,63 +49,19 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Run Gemini AI Agent
+      - name: Run Gemini AI Developer Agent
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PROMPT_CONTEXT: ${{ github.event.issue.body || github.event.comment.body || '퇴근 후 자율 개발 대기 중인 이슈를 처리해줘.' }}
-        run: |
-          echo "=== Gemini AI 자율 에이전트 구동 시작 ==="
-          node -e '
-            const https = require("https");
-            const apiKey = process.env.GEMINI_API_KEY;
-            const prompt = process.env.PROMPT_CONTEXT;
-            
-            console.log("전달받은 요구사항:", prompt);
+          PROMPT_CONTEXT: ${{ github.event.issue.body || github.event.comment.body || 'README.md에 프로젝트 소개 한 줄 추가하기' }}
+        run: node .github/scripts/agent-runner.js
 
-            const data = JSON.stringify({
-              contents: [{
-                parts: [{
-                  text: "당신은 전문 소프트웨어 개발 AI 에이전트입니다. 다음 이슈 내용을 분석하고 수행해야 할 작업을 안내해주세요: " + prompt
-                }]
-              }]
-            });
-
-            const req = https.request({
-              hostname: "generativelanguage.googleapis.com",
-              path: "/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey,
-              method: "POST",
-              headers: { "Content-Type": "application/json" }
-            }, (res) => {
-              let body = "";
-              res.on("data", (chunk) => body += chunk);
-              res.on("end", () => {
-                try {
-                  const response = JSON.parse(body);
-                  if (response.error) {
-                    console.error("\n[Gemini API 에러 발생]:", response.error.message);
-                    process.exit(1);
-                  }
-                  const resultText = response.candidates?.[0]?.content?.parts?.[0]?.text;
-                  console.log("\n[Gemini AI 분석 결과]");
-                  console.log(resultText || body);
-                } catch (e) {
-                  console.error("응답 파싱 실패:", body);
-                  process.exit(1);
-                }
-              });
-            });
-
-            req.on("error", (e) => {
-              console.error("API 요청 중 에러 발생:", e);
-              process.exit(1);
-            });
-
-            req.write(data);
-            req.end();
-          '
-
-      - name: Verify Monorepo Build, Typecheck and Design Lint (CLAUDE.md Rules)
+      - name: Verify Monorepo Build, Typecheck and Design Lint
         run: pnpm build
+
+      - name: Configure Git User
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
